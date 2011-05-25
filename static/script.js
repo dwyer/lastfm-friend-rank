@@ -3,7 +3,11 @@ function getUserURL(user) {
 }
 
 function getUserLink(user) {
-  return '<a href="'+getUserURL(user)+'" target="_blank">'+user+'</a>';
+  var a = document.createElement('a');
+  a.setAttribute('href', getUserURL(user));
+  a.setAttribute('target', '_blank');
+  a.appendChild(document.createTextNode(user));
+  return a
 }
 
 $(document).ready(function() {
@@ -23,15 +27,29 @@ $(document).ready(function() {
           $.ajax({
             url: '/compare?user='+user+'&friend='+friend,
             success: function (data) {
+              var appended = false;
               var score = $.parseJSON(data);
-              var item = '<li>'+getUserLink(friend)+' <span style="color:gray;">(<span class="score">'+score+'</span>%)</span></li>';
+              var item = document.createElement('li');
+              item.appendChild(getUserLink(friend));
+              var span = document.createElement('span');
+              span.setAttribute('class', 'score');
+              span.appendChild(document.createTextNode(score));
+              item.appendChild(document.createTextNode(' '));
+              item.appendChild(span);
               $('#friend-number').empty().append(++count);
-              $('#friend-list').append(item);
-              $('#friend-list').sort({
-                sortOn: '.score',
-                direction: 'desc',
-                sortType: 'number'
+              //$('#friend-list').append(item);
+              var $list = $('#friend-list');
+              $list.children().each(function() {
+                var thatScore = $(this).find('.score').text();
+                console.log(thatScore+' '+score);
+                if (!appended && thatScore <= score) {
+                  $(this).before(item);
+                  appended = true;
+                }
               });
+              if (!appended) {
+                $list.append(item);
+              }
             }
           });
         });
