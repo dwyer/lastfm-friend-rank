@@ -7,9 +7,8 @@ function getUserLink(user) {
 }
 
 $(document).ready(function() {
-  var $username = $('#username');
-  $username.focus();
   $('#the-form').submit(function() {
+    var $username = $('#username');
     var $progress = $('#progress');
     var $status = $('#status-bar');
     var $list = $('#friend-list');
