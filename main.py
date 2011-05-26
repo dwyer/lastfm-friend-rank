@@ -7,7 +7,6 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 import lastfm
 
 key = '087eea10b5cbda43d230f8cb2b9a7272'
-secret = '90bcc69c48c50acc5269d588c55aebec'
 
 
 class Index(webapp.RequestHandler):
