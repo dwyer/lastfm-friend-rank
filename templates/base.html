@@ -10,13 +10,14 @@
     <script type="text/javascript" src="/static/script.js"></script>
   </head>
   <body>
-    <h1>last.fm Friend Rank</h1>
-    <div>USAGE: Enter a last.fm username. Results take a while to be processed so be patient.</div>
-    <form id="the-form">
-      <input id="username" type="text" placeholder="last.fm username" />
-      <input id="go-button" type="submit" value="Go" />
-    </form>
-    <div id="status-bar"></div>
-    <ol id="friend-list"></ol>
+    <div id="main">
+      <h1>last.fm Friend Rank</h1>
+      <form id="the-form">
+        <input id="username" type="text" placeholder="last.fm username, i.e. spintriae" />
+      </form>
+      <progress id="progress"></progress>
+      <div id="status-bar"></div>
+      <ol id="friend-list"></ol>
+    </div>
   </body>
 </html>

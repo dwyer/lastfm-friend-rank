@@ -3,52 +3,49 @@ function getUserURL(user) {
 }
 
 function getUserLink(user) {
-  var a = document.createElement('a');
-  a.setAttribute('href', getUserURL(user));
-  a.setAttribute('target', '_blank');
-  a.appendChild(document.createTextNode(user));
-  return a
+  return '<a href="'+getUserURL(user)+'" target="_blank">'+user+'</a>'
 }
 
 $(document).ready(function() {
+  var $username = $('#username');
+  $username.focus();
   $('#the-form').submit(function() {
-    var user = $('#username').val();
+    var $progress = $('#progress');
+    var $status = $('#status-bar');
+    var $list = $('#friend-list');
+    var user = $username.val();
     var url = '/friends?user=' + user;
-    $('#username').val('');
-    $('#status-bar').empty();
-    $('#friend-list').empty();
+    $username.val('');
+    $progress.attr('value', 0).attr('max', 0);
+    $status.empty();
+    $list.empty();
     $.ajax({
       url: url,
       success: function(data) {
         var friends = $.parseJSON(data);
         var count = 0;
-        $('#status-bar').append('Processed <span id="friend-number">0</span> of '+friends.length+' friends for '+getUserLink(user));
+        $progress.attr('max', friends.length);
+        $status.append('Processed <span id="friend-number">0</span> of '+
+            friends.length+' friends for '+getUserLink(user));
         $(friends).each(function(i, friend) {
           $.ajax({
             url: '/compare?user='+user+'&friend='+friend,
             success: function (data) {
               var appended = false;
               var score = $.parseJSON(data);
-              var item = document.createElement('li');
-              item.appendChild(getUserLink(friend));
-              var span = document.createElement('span');
-              span.setAttribute('class', 'score');
-              span.appendChild(document.createTextNode(score));
-              item.appendChild(document.createTextNode(' '));
-              item.appendChild(span);
+              var $item = $('<li>'+getUserLink(friend)+
+                  ' <span class="score">'+score+'</span></li>');
               $('#friend-number').empty().append(++count);
-              //$('#friend-list').append(item);
-              var $list = $('#friend-list');
+              $progress.attr('value', count);
               $list.children().each(function() {
                 var thatScore = $(this).find('.score').text();
-                console.log(thatScore+' '+score);
                 if (!appended && thatScore <= score) {
-                  $(this).before(item);
+                  $(this).before($item);
                   appended = true;
                 }
               });
               if (!appended) {
-                $list.append(item);
+                $list.append($item);
               }
             }
           });
