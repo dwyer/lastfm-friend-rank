@@ -14,6 +14,7 @@ key = '087eea10b5cbda43d230f8cb2b9a7272'
 
 
 def get_user(name):
+  # TODO: can't pickle lastfm's User; find workaround
   user = None # memcache.get(name)
   if not user:
     api = lastfm.api.Api(key)
@@ -45,50 +46,55 @@ class CompareFriends(webapp.RequestHandler):
     self.response.out.write(dumps(score))
 
 
-class XmppHandler(xmpp_handlers.CommandHandler):
-  def user_command(self, message=None):
+class XmppHandler(xmpp_handlers.BaseHandler):
+  def message_received(self, message=None):
     taskqueue.add(params=self.request.POST)
-    message.reply('Please wait while we process your request.')
+    message.reply('Hang on a second while we do the math...')
 
 
-class QueueHandler(xmpp_handlers.CommandHandler):
-  def user_command(self, message=None):
-    from urllib import urlencode
-    from google.appengine.api import urlfetch
-    from django.utils.simplejson import loads
-    user = get_user(message.arg)
-    friends = user.get_friends(limit=0)
-    base_url = 'http://ws.audioscrobbler.com/2.0/'
-    params = {
-        'format': 'json',
-        'method': 'tasteometer.compare',
-        'type1': 'user',
-        'type2': 'user',
-        'value1': user.name,
-        'value2': None,
-        'api_key': key,
-        }
-    # make all the necessary RPC calls
-    for friend in friends:
-      friend.rpc = urlfetch.create_rpc()
-      query_string = urlencode(dict(params, value2=friend.name))
-      url = '?'.join((base_url, query_string))
-      urlfetch.make_fetch_call(friend.rpc, url)
-    # start collecting RPC results
-    for friend in friends:
-      try:
-        result = friend.rpc.get_result()
-        if result.status_code == 200:
-          object = loads(result.content)
-          friend.score = float(object['comparison']['result']['score'])
-        else:
-          raise urlfetch.DownloadError
-      except urlfetch.DownloadError:
-        friend.score = -1
-    friends.sort(lambda a, b: cmp(b.score, a.score))
-    ten = friends[:10]
-    lines = ['%d. %s (%s)' % (i+1, f.name, f.score) for i, f in enumerate(ten)]
-    message.reply('\n'.join(['%s\'s top 10:' % user.name]+lines))
+class QueueHandler(xmpp_handlers.BaseHandler):
+  def message_received(self, message=None):
+    try:
+      from urllib import urlencode
+      from google.appengine.api import urlfetch
+      from django.utils.simplejson import loads
+      api = lastfm.api.Api(key)
+      user = lastfm.user.User(api, name=message.body)
+      friends = user.get_friends(limit=0)
+      base_url = 'http://ws.audioscrobbler.com/2.0/'
+      params = {
+          'format': 'json',
+          'method': 'tasteometer.compare',
+          'type1': 'user',
+          'type2': 'user',
+          'value1': user.name,
+          'value2': None,
+          'api_key': key,
+          }
+      # make all the necessary RPC calls
+      for friend in friends:
+        friend.rpc = urlfetch.create_rpc()
+        query_string = urlencode(dict(params, value2=friend.name))
+        url = '?'.join((base_url, query_string))
+        urlfetch.make_fetch_call(friend.rpc, url)
+      # start collecting RPC results
+      for friend in friends:
+        try:
+          result = friend.rpc.get_result()
+          if result.status_code == 200:
+            object = loads(result.content)
+            friend.score = float(object['comparison']['result']['score']) * 100
+          else:
+            raise urlfetch.DownloadError
+        except urlfetch.DownloadError:
+          friend.score = -1
+      friends.sort(lambda a, b: cmp(b.score, a.score))
+      lines = ['%s\'s top 10:' % (user.name)]
+      for i, friend in enumerate(friends[:10]):
+        lines.append('%d. %s (%s%%)' % (i+1, friend.name, friend.score))
+      message.reply('\n'.join(lines))
+    except Exception, e:
+      message.reply(str(e))
 
 
 def main():
