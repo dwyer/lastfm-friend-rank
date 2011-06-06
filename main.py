@@ -46,20 +46,26 @@ class CompareFriends(webapp.RequestHandler):
     self.response.out.write(dumps(score))
 
 
-class XmppHandler(xmpp_handlers.BaseHandler):
-  def message_received(self, message=None):
+class XmppHandler(xmpp_handlers.CommandHandler):
+  def text_message(self, message):
+    message.reply('Type "/user [username]" to see that user\'s top friends.')
+  
+  def user_command(self, message=None):
     taskqueue.add(params=self.request.POST)
     message.reply('Hang on a second while we do the math...')
+  
+  def unhandled_command(self, message=None):
+    self.text_message(message)
 
 
-class QueueHandler(xmpp_handlers.BaseHandler):
-  def message_received(self, message=None):
+class QueueHandler(xmpp_handlers.CommandHandler):
+  def user_command(self, message=None):
     try:
       from urllib import urlencode
       from google.appengine.api import urlfetch
       from django.utils.simplejson import loads
       api = lastfm.api.Api(key)
-      user = lastfm.user.User(api, name=message.body)
+      user = lastfm.user.User(api, name=message.arg)
       friends = user.get_friends(limit=0)
       base_url = 'http://ws.audioscrobbler.com/2.0/'
       params = {
